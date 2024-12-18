@@ -16,6 +16,10 @@
             display: inline-block;
             padding: 10px;
         }
+        #image-container img {
+            max-width: 100%;
+            height: auto;
+        }
         #label-container div {
             font-size: 18px;
             margin: 5px;
@@ -108,8 +112,10 @@
             const file = input.files[0];
             if (!file) return;
 
+            // Create an img element to display the uploaded image
             const img = new Image();
             img.src = URL.createObjectURL(file); // Temporary URL for the image
+            img.alt = "Uploaded Potato Image";
 
             img.onload = async () => {
                 // Display the uploaded image
@@ -132,4 +138,5 @@
     </script>
 </body>
 </html>
+
 
