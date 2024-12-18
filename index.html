@@ -14,35 +14,30 @@
             margin: 20px auto;
             border: 2px solid #333;
             display: inline-block;
-            padding: 10px;
-        }
-        #image-container {
-            width: 500px;
-            height: 500px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            background-color: #f3f3f3;
+            width: 400px;
+            height: 400px;
+            background-color: #f2f2f2;
+            position: relative;
         }
         #image-container img {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
         #label-container div {
             font-size: 18px;
             margin: 5px;
             color: #333;
         }
-        button, input[type="file"] {
+        button {
             padding: 10px 20px;
             font-size: 16px;
             margin: 10px;
             cursor: pointer;
         }
-        .error {
+        #error-message {
             color: red;
-            font-size: 14px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -50,31 +45,32 @@
     <h1>Teachable Machine - Potato Classifier</h1>
     <button type="button" onclick="init()">Start Webcam</button>
     <button type="button" onclick="takeSnapshot()">Take Snapshot</button>
-    <input type="file" id="imageUpload" accept="image/*" onchange="uploadImage()" style="margin-top: 10px;">
+    <input type="file" id="imageUpload" accept="image/*" onchange="uploadImage()">
     <div id="webcam-container"></div>
     <div id="image-container">
         <p>Uploaded image will appear here</p>
     </div>
     <div id="label-container"></div>
-    <div class="error" id="error-message"></div>
+    <div id="error-message"></div>
 
     <!-- TensorFlow.js and Teachable Machine libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
     <script>
         const URL = "https://teachablemachine.withgoogle.com/models/dGYC0JvKM/";
-
         let model, webcam, labelContainer, maxPredictions;
 
+        // Initialize the model and webcam
         async function init() {
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
+
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            const flip = true; 
-            webcam = new tmImage.Webcam(400, 400, flip); 
-            await webcam.setup(); 
+            webcam = new tmImage.Webcam(400, 400, true); // Flip the webcam
+            await webcam.setup();
             await webcam.play();
             window.requestAnimationFrame(loop);
 
@@ -88,33 +84,32 @@
             }
         }
 
+        // Continuous webcam loop
         async function loop() {
-            webcam.update(); 
+            webcam.update();
             await predict(webcam.canvas);
             window.requestAnimationFrame(loop);
         }
 
+        // Predict potato classification
         async function predict(image) {
             const prediction = await model.predict(image);
             labelContainer.innerHTML = "";
-            for (let i = 0; i < prediction.length; i++) {
-                const classPrediction = `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(2)}%`;
+            prediction.forEach(p => {
+                const result = `${p.className}: ${(p.probability * 100).toFixed(2)}%`;
                 const label = document.createElement("div");
-                label.textContent = classPrediction;
+                label.textContent = result;
                 labelContainer.appendChild(label);
-            }
+            });
         }
 
-        function takeSnapshot() {
-            const link = document.createElement('a');
-            link.download = 'snapshot.png';
-            link.href = webcam.canvas.toDataURL();
-            link.click();
-        }
-
+        // Upload and display the image
         async function uploadImage() {
             const errorContainer = document.getElementById("error-message");
-            errorContainer.textContent = ""; // Clear previous errors
+            const imageContainer = document.getElementById("image-container");
+            imageContainer.innerHTML = ""; // Clear previous image
+            errorContainer.textContent = ""; // Clear errors
+
             const input = document.getElementById("imageUpload");
             const file = input.files[0];
 
@@ -123,27 +118,40 @@
                 return;
             }
 
+            // Ensure the uploaded file is an image
+            const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                errorContainer.textContent = "Invalid file type. Please upload a JPEG, PNG, or WEBP image.";
+                return;
+            }
+
             const img = new Image();
             img.onload = async () => {
-                const imageContainer = document.getElementById("image-container");
-                imageContainer.innerHTML = "";
-                imageContainer.appendChild(img);
-
+                imageContainer.appendChild(img); // Display the uploaded image
                 const canvas = document.createElement("canvas");
-                const size = 400;
-                canvas.width = size;
-                canvas.height = size;
                 const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, size, size);
+                canvas.width = 400;
+                canvas.height = 400;
+                ctx.drawImage(img, 0, 0, 400, 400);
 
+                console.log("Image loaded and canvas ready for prediction.");
                 await predict(canvas);
             };
-
             img.onerror = () => {
-                errorContainer.textContent = "Failed to load image. Ensure it is in a supported format (JPG, PNG, WEBP).";
+                errorContainer.textContent = "Failed to load the image. Please try again.";
+                console.error("Image load failed.");
             };
 
+            // Generate a URL for the uploaded file and display the image
             img.src = URL.createObjectURL(file);
+        }
+
+        // Take a snapshot from the webcam
+        function takeSnapshot() {
+            const link = document.createElement('a');
+            link.download = 'snapshot.png';
+            link.href = webcam.canvas.toDataURL();
+            link.click();
         }
     </script>
 </body>
