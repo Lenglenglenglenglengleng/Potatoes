@@ -31,8 +31,9 @@
 </head>
 <body>
     <h1>Teachable Machine - Potato Classifier</h1>
-    <button type="button" onclick="init()">Start</button>
+    <button type="button" onclick="init()">Start Webcam</button>
     <button type="button" onclick="takeSnapshot()">Take Snapshot</button>
+    <input type="file" id="imageUpload" accept="image/*" onchange="uploadImage()" style="margin-top: 10px;">
     <div id="webcam-container"></div>
     <div id="label-container"></div>
 
@@ -75,13 +76,13 @@
         // Loop to capture webcam frames and predict in real time
         async function loop() {
             webcam.update(); // Update webcam frame
-            await predict();
+            await predict(webcam.canvas); // Pass the webcam canvas for predictions
             window.requestAnimationFrame(loop);
         }
 
-        // Run predictions on the current webcam frame
-        async function predict() {
-            const prediction = await model.predict(webcam.canvas);
+        // Run predictions on an image
+        async function predict(image) {
+            const prediction = await model.predict(image);
             labelContainer.innerHTML = ""; // Clear previous predictions
 
             for (let i = 0; i < prediction.length; i++) {
@@ -101,6 +102,27 @@
             link.href = webcam.canvas.toDataURL(); // Convert webcam canvas to an image
             link.click();
         }
+
+        // Handle image upload and run predictions
+        async function uploadImage() {
+            const input = document.getElementById("imageUpload");
+            const file = input.files[0];
+            if (!file) return;
+
+            const img = new Image();
+            img.src = URL.createObjectURL(file); // Create a temporary URL for the uploaded file
+            img.onload = async () => {
+                const canvas = document.createElement("canvas");
+                canvas.width = 400; // Resize image for consistency
+                canvas.height = 400;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, 400, 400);
+
+                // Run predictions on the uploaded image
+                await predict(canvas);
+            };
+        }
     </script>
 </body>
 </html>
+
