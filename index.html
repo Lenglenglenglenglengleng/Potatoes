@@ -3,25 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teachable Machine Image Model</title>
+    <title>Teachable Machine - Potato Classifier</title>
     <style>
-        /* Basic styling for webcam container and labels */
         body {
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 20px;
         }
-        #webcam-container {
+        #webcam-container, #image-container {
             margin: 20px auto;
             border: 2px solid #333;
             display: inline-block;
+            padding: 10px;
         }
         #label-container div {
             font-size: 18px;
             margin: 5px;
             color: #333;
         }
-        button {
+        button, input[type="file"] {
             padding: 10px 20px;
             font-size: 16px;
             margin: 10px;
@@ -35,6 +35,7 @@
     <button type="button" onclick="takeSnapshot()">Take Snapshot</button>
     <input type="file" id="imageUpload" accept="image/*" onchange="uploadImage()" style="margin-top: 10px;">
     <div id="webcam-container"></div>
+    <div id="image-container"></div>
     <div id="label-container"></div>
 
     <!-- TensorFlow.js and Teachable Machine libraries -->
@@ -86,12 +87,10 @@
             labelContainer.innerHTML = ""; // Clear previous predictions
 
             for (let i = 0; i < prediction.length; i++) {
-                if (prediction[i].probability > 0.7) { // Show only confident predictions (>70%)
-                    const classPrediction = `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(2)}%`;
-                    const label = document.createElement("div");
-                    label.textContent = classPrediction;
-                    labelContainer.appendChild(label);
-                }
+                const classPrediction = `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(2)}%`;
+                const label = document.createElement("div");
+                label.textContent = classPrediction;
+                labelContainer.appendChild(label);
             }
         }
 
@@ -103,26 +102,33 @@
             link.click();
         }
 
-        // Handle image upload and run predictions
-       async function uploadImage() {
-    const input = document.getElementById("imageUpload");
-    const file = input.files[0];
-    if (!file) return;
+        // Handle image upload, display the image, and run predictions
+        async function uploadImage() {
+            const input = document.getElementById("imageUpload");
+            const file = input.files[0];
+            if (!file) return;
 
-    const img = new Image();
-    img.src = URL.createObjectURL(file); // Temporary URL for the image
-    img.onload = async () => {
-        const canvas = document.createElement("canvas");
-        const size = 400; // Ensure consistent size
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, size, size);
+            const img = new Image();
+            img.src = URL.createObjectURL(file); // Temporary URL for the image
 
-        // Run predictions on the uploaded image
-        await predict(canvas);
-    };
-}
+            img.onload = async () => {
+                // Display the uploaded image
+                const imageContainer = document.getElementById("image-container");
+                imageContainer.innerHTML = ""; // Clear previous image
+                imageContainer.appendChild(img);
+
+                // Resize the image to match model input dimensions
+                const canvas = document.createElement("canvas");
+                const size = 400; // Model expects 400x400 input
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, size, size);
+
+                // Run predictions on the uploaded image
+                await predict(canvas);
+            };
+        }
     </script>
 </body>
 </html>
