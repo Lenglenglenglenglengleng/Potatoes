@@ -40,6 +40,10 @@
             margin: 10px;
             cursor: pointer;
         }
+        .error {
+            color: red;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -52,6 +56,7 @@
         <p>Uploaded image will appear here</p>
     </div>
     <div id="label-container"></div>
+    <div class="error" id="error-message"></div>
 
     <!-- TensorFlow.js and Teachable Machine libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -61,27 +66,21 @@
 
         let model, webcam, labelContainer, maxPredictions;
 
-        // Load the model and setup the webcam
         async function init() {
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
-
-            // Load the model and metadata
             model = await tmImage.load(modelURL, metadataURL);
             maxPredictions = model.getTotalClasses();
 
-            // Set up the webcam
-            const flip = true; // Mirror the webcam
-            webcam = new tmImage.Webcam(400, 400, flip); // Larger resolution for better accuracy
-            await webcam.setup(); // Request access to the webcam
+            const flip = true; 
+            webcam = new tmImage.Webcam(400, 400, flip); 
+            await webcam.setup(); 
             await webcam.play();
             window.requestAnimationFrame(loop);
 
-            // Append webcam canvas to the DOM
             document.getElementById("webcam-container").innerHTML = "";
             document.getElementById("webcam-container").appendChild(webcam.canvas);
-            
-            // Create label container
+
             labelContainer = document.getElementById("label-container");
             labelContainer.innerHTML = "";
             for (let i = 0; i < maxPredictions; i++) {
@@ -89,18 +88,15 @@
             }
         }
 
-        // Loop to capture webcam frames and predict in real time
         async function loop() {
-            webcam.update(); // Update webcam frame
-            await predict(webcam.canvas); // Pass the webcam canvas for predictions
+            webcam.update(); 
+            await predict(webcam.canvas);
             window.requestAnimationFrame(loop);
         }
 
-        // Run predictions on an image
         async function predict(image) {
             const prediction = await model.predict(image);
-            labelContainer.innerHTML = ""; // Clear previous predictions
-
+            labelContainer.innerHTML = "";
             for (let i = 0; i < prediction.length; i++) {
                 const classPrediction = `${prediction[i].className}: ${(prediction[i].probability * 100).toFixed(2)}%`;
                 const label = document.createElement("div");
@@ -109,42 +105,45 @@
             }
         }
 
-        // Take a snapshot of the current webcam view
         function takeSnapshot() {
             const link = document.createElement('a');
             link.download = 'snapshot.png';
-            link.href = webcam.canvas.toDataURL(); // Convert webcam canvas to an image
+            link.href = webcam.canvas.toDataURL();
             link.click();
         }
 
-        // Handle image upload, display the image, and run predictions
         async function uploadImage() {
+            const errorContainer = document.getElementById("error-message");
+            errorContainer.textContent = ""; // Clear previous errors
             const input = document.getElementById("imageUpload");
             const file = input.files[0];
-            if (!file) return;
 
-            // Create an img element to display the uploaded image
+            if (!file) {
+                errorContainer.textContent = "No file selected!";
+                return;
+            }
+
             const img = new Image();
-            img.src = URL.createObjectURL(file); // Temporary URL for the image
-            img.alt = "Uploaded Potato Image";
-
             img.onload = async () => {
-                // Display the uploaded image
                 const imageContainer = document.getElementById("image-container");
-                imageContainer.innerHTML = ""; // Clear previous image
+                imageContainer.innerHTML = "";
                 imageContainer.appendChild(img);
 
-                // Resize the image to match model input dimensions
                 const canvas = document.createElement("canvas");
-                const size = 400; // Model expects 400x400 input
+                const size = 400;
                 canvas.width = size;
                 canvas.height = size;
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(img, 0, 0, size, size);
 
-                // Run predictions on the uploaded image
                 await predict(canvas);
             };
+
+            img.onerror = () => {
+                errorContainer.textContent = "Failed to load image. Ensure it is in a supported format (JPG, PNG, WEBP).";
+            };
+
+            img.src = URL.createObjectURL(file);
         }
     </script>
 </body>
