@@ -42,118 +42,66 @@
     </style>
 </head>
 <body>
-    <h1>Teachable Machine - Potato Classifier</h1>
-    <button type="button" onclick="init()">Start Webcam</button>
-    <button type="button" onclick="takeSnapshot()">Take Snapshot</button>
-    <input type="file" id="imageUpload" accept="image/*" onchange="uploadImage()">
-    <div id="webcam-container"></div>
-    <div id="image-container">
-        <p>Uploaded image will appear here</p>
-    </div>
-    <div id="label-container"></div>
-    <div id="error-message"></div>
+   <div>Teachable Machine Image Model</div>
+<button type="button" onclick="init()">Start</button>
+<div id="webcam-container"></div>
+<div id="label-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<script type="text/javascript">
+    // More API functions here:
+    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
 
-    <!-- TensorFlow.js and Teachable Machine libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    // the link to your model provided by Teachable Machine export panel
+    const URL = "https://teachablemachine.withgoogle.com/models/dGYC0JvKM/";
 
-    <script>
-        const URL = "https://teachablemachine.withgoogle.com/models/dGYC0JvKM/";
-        let model, webcam, labelContainer, maxPredictions;
+    let model, webcam, labelContainer, maxPredictions;
 
-        // Initialize the model and webcam
-        async function init() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
+    // Load the image model and setup the webcam
+    async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
 
-            model = await tmImage.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
+        // load the model and metadata
+        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+        // or files from your local hard drive
+        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
 
-            webcam = new tmImage.Webcam(400, 400, true); // Flip the webcam
-            await webcam.setup();
-            await webcam.play();
-            window.requestAnimationFrame(loop);
+        // Convenience function to setup a webcam
+        const flip = true; // whether to flip the webcam
+        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
+        await webcam.setup(); // request access to the webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
 
-            document.getElementById("webcam-container").innerHTML = "";
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-
-            labelContainer = document.getElementById("label-container");
-            labelContainer.innerHTML = "";
-            for (let i = 0; i < maxPredictions; i++) {
-                labelContainer.appendChild(document.createElement("div"));
-            }
+        // append elements to the DOM
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) { // and class labels
+            labelContainer.appendChild(document.createElement("div"));
         }
+    }
 
-        // Continuous webcam loop
-        async function loop() {
-            webcam.update();
-            await predict(webcam.canvas);
-            window.requestAnimationFrame(loop);
+    async function loop() {
+        webcam.update(); // update the webcam frame
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    // run the webcam image through the image model
+    async function predict() {
+        // predict can take in an image, video or canvas html element
+        const prediction = await model.predict(webcam.canvas);
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction =
+                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+            labelContainer.childNodes[i].innerHTML = classPrediction;
         }
+    }
+</script>
 
-        // Predict potato classification
-        async function predict(image) {
-            const prediction = await model.predict(image);
-            labelContainer.innerHTML = "";
-            prediction.forEach(p => {
-                const result = `${p.className}: ${(p.probability * 100).toFixed(2)}%`;
-                const label = document.createElement("div");
-                label.textContent = result;
-                labelContainer.appendChild(label);
-            });
-        }
-
-        // Upload and display the image
-        async function uploadImage() {
-            const errorContainer = document.getElementById("error-message");
-            const imageContainer = document.getElementById("image-container");
-            imageContainer.innerHTML = ""; // Clear previous image
-            errorContainer.textContent = ""; // Clear errors
-
-            const input = document.getElementById("imageUpload");
-            const file = input.files[0];
-
-            if (!file) {
-                errorContainer.textContent = "No file selected!";
-                return;
-            }
-
-            // Ensure the uploaded file is an image
-            const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                errorContainer.textContent = "Invalid file type. Please upload a JPEG, PNG, or WEBP image.";
-                return;
-            }
-
-            const img = new Image();
-            img.onload = async () => {
-                imageContainer.appendChild(img); // Display the uploaded image
-                const canvas = document.createElement("canvas");
-                const ctx = canvas.getContext("2d");
-                canvas.width = 400;
-                canvas.height = 400;
-                ctx.drawImage(img, 0, 0, 400, 400);
-
-                console.log("Image loaded and canvas ready for prediction.");
-                await predict(canvas);
-            };
-            img.onerror = () => {
-                errorContainer.textContent = "Failed to load the image. Please try again.";
-                console.error("Image load failed.");
-            };
-
-            // Generate a URL for the uploaded file and display the image
-            img.src = URL.createObjectURL(file);
-        }
-
-        // Take a snapshot from the webcam
-        function takeSnapshot() {
-            const link = document.createElement('a');
-            link.download = 'snapshot.png';
-            link.href = webcam.canvas.toDataURL();
-            link.click();
-        }
-    </script>
 </body>
 </html>
 
