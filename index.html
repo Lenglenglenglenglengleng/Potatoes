@@ -16,9 +16,18 @@
             display: inline-block;
             padding: 10px;
         }
+        #image-container {
+            width: 500px;
+            height: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-color: #f3f3f3;
+        }
         #image-container img {
             max-width: 100%;
-            height: auto;
+            max-height: 100%;
         }
         #label-container div {
             font-size: 18px;
@@ -39,7 +48,9 @@
     <button type="button" onclick="takeSnapshot()">Take Snapshot</button>
     <input type="file" id="imageUpload" accept="image/*" onchange="uploadImage()" style="margin-top: 10px;">
     <div id="webcam-container"></div>
-    <div id="image-container"></div>
+    <div id="image-container">
+        <p>Uploaded image will appear here</p>
+    </div>
     <div id="label-container"></div>
 
     <!-- TensorFlow.js and Teachable Machine libraries -->
